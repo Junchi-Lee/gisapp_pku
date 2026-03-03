@@ -8,9 +8,10 @@
     <OutputType>WinExe</OutputType>
     <RootNamespace>SimpleGIS</RootNamespace>
     <AssemblyName>SimpleGIS</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -21,6 +22,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -30,6 +32,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -44,6 +47,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Add_field.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Add_field.Designer.cs">
+      <DependentUpon>Add_field.cs</DependentUpon>
+    </Compile>
     <Compile Include="DataIOTools\dbfField.cs" />
     <Compile Include="DataIOTools\dbfFileHeader.cs" />
     <Compile Include="DataIOTools\dbfFileManager.cs" />
@@ -59,16 +68,40 @@
     <Compile Include="Form_CreateLayer.Designer.cs">
       <DependentUpon>Form_CreateLayer.cs</DependentUpon>
     </Compile>
+    <Compile Include="Form_Label.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form_Label.designer.cs">
+      <DependentUpon>Form_Label.cs</DependentUpon>
+    </Compile>
     <Compile Include="Form_LayerProperties.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Form_LayerProperties.Designer.cs">
       <DependentUpon>Form_LayerProperties.cs</DependentUpon>
     </Compile>
+    <Compile Include="Form_PointRenderer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form_PointRenderer.designer.cs">
+      <DependentUpon>Form_PointRenderer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form_PolygonRenderer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form_PolygonRenderer.designer.cs">
+      <DependentUpon>Form_PolygonRenderer.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Form_PolylineRenderer.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form_PolylineRenderer.designer.cs">
+      <DependentUpon>Form_PolylineRenderer.cs</DependentUpon>
+    </Compile>
     <Compile Include="Form_Select.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="Form_Select.Designer.cs">
+    <Compile Include="Form_Select.designer.cs">
       <DependentUpon>Form_Select.cs</DependentUpon>
     </Compile>
     <Compile Include="Form_table.cs">
@@ -87,11 +120,26 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ShapefileIOTools.cs" />
     <Compile Include="SPGLIOTools.cs" />
+    <EmbeddedResource Include="Add_field.resx">
+      <DependentUpon>Add_field.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Form_CreateLayer.resx">
       <DependentUpon>Form_CreateLayer.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Form_Label.resx">
+      <DependentUpon>Form_Label.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Form_LayerProperties.resx">
       <DependentUpon>Form_LayerProperties.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form_PointRenderer.resx">
+      <DependentUpon>Form_PointRenderer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form_PolygonRenderer.resx">
+      <DependentUpon>Form_PolygonRenderer.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form_PolylineRenderer.resx">
+      <DependentUpon>Form_PolylineRenderer.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Form_Select.resx">
       <DependentUpon>Form_Select.cs</DependentUpon>
@@ -110,7 +158,9 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
+    <None Include="app.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

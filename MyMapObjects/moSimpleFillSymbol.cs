@@ -18,6 +18,7 @@ namespace MyMapObjects
         private string _Label = "";
         private bool _Visible = true;
         private Color _Color = Color.LightPink;
+        private Color _OutlineColor = Color.DarkGray;
         private moSimpleLineSymbol _Outline; // 面符号的轮廓线
 
         #endregion
@@ -78,6 +79,15 @@ namespace MyMapObjects
         }
 
         /// <summary>
+        /// 获取或设置描边颜色
+        /// </summary>
+        public Color OutlineColor
+        {
+            get { return _OutlineColor; }
+            set { _OutlineColor = value; }
+        }
+
+        /// <summary>
         /// 获取或设置边界符号
         /// </summary>
         public moSimpleLineSymbol Outline
@@ -101,6 +111,7 @@ namespace MyMapObjects
             sSymbol._Visible = _Visible;
             sSymbol._Color = _Color;
             sSymbol.Outline = (moSimpleLineSymbol)_Outline.Clone();
+            sSymbol._OutlineColor = _OutlineColor;
             return sSymbol;
         }
 
@@ -138,13 +149,14 @@ namespace MyMapObjects
                 G = (byte)(179 + 66 * sBytes[2] / 255);
             }
             _Color = Color.FromArgb(A, R, G, B);
+           
         }
 
         //初始化边界符号
-        private void InitializeOutline()
+        public void InitializeOutline()
         {
             _Outline = new moSimpleLineSymbol();
-            _Outline.Color = Color.DarkGray;
+            _Outline.Color = OutlineColor;
         }
 
         #endregion

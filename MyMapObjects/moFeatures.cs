@@ -74,6 +74,28 @@ namespace MyMapObjects
         {
             _Features.RemoveAt(index);
         }
+        public int Find(moFeature feature)
+        {
+            object[] temp = feature.Attributes.ToArray();
+            object[] temp1;
+            bool judge = true;
+            for (int i = 0; i < this.Count; i++)
+            {
+                temp1 = this.GetItem(i).Attributes.ToArray();
+                for (int j = 0; j < this.GetItem(i).Attributes.Count; j++)
+                {
+                    if (temp1[j] != temp[j])
+                    {
+                        judge = false;
+                        break;
+                    }
+                }
+                if (judge == true)
+                    return i;
+                judge = true;
+            }
+            return -1;
+        }
         /// <summary>
         /// 清空所有元素（要素）
         /// </summary>

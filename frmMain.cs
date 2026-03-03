@@ -90,13 +90,63 @@ namespace SimpleGIS
         private List<Int32> mLayerIndex = new List<Int32>();
         private List<MyMapObjects.moGeometry> mCopyingGeometries = new List<MyMapObjects.moGeometry>();
 
-        //     public List<AttributeTable> All_tables = new List<AttributeTable>();//所有属性表的集合
+        public List<Form_table> All_tables = new List<Form_table>();//所有属性表的集合
+        public int Fid_table_windows = 0;
+        private bool mIsInRenderer = false;     //当前是否处于图层渲染中
+
 
         //（3）与文件操作相关的变量
         public List<DataIOTools.spglShpFileManager> mSPGLShapeFiles = new List<DataIOTools.spglShpFileManager>();   //管理要素文件
         public List<DataIOTools.dbfFileManager> mDBFFiles = new List<DataIOTools.dbfFileManager>();     //管理属性文件
 
-        
+        //(4）与图层渲染有关的变量
+
+        private Int32 mPointRendererMode = 0; //渲染方式,0:简单渲染,1:唯一值渲染,2:分级渲染
+        private Int32 mPointSymbolStyle = 0; //样式索引
+        private Color mPointSimpleRendererColor = Color.Red; //符号颜色
+        private Double mPointSimpleRendererSize = 5; //符号尺寸
+        private Int32 mPointUniqueFieldIndex = 0; //绑定字段索引
+        private Double mPointUniqueRendererSize = 5; //符号尺寸
+        private Int32 mPointClassBreaksFieldIndex = 0; //绑定字段索引
+        private Int32 mPointClassBreaksNum = 5; //分类数
+        private Color mPointClassBreaksRendererColor = Color.Red; //符号颜色
+        private Double mPointClassBreaksRendererMinSize = 3; //符号起始尺寸,点图层采用符号尺寸进行分级表示
+        private Double mPointClassBreaksRendererMaxSize = 6; //符号终止尺寸
+
+        private Int32 mPolylineRendererMode = 0; //渲染方式,0:简单渲染,1:唯一值渲染,2:分级渲染
+        private Int32 mPolylineSymbolStyle = 0; //样式索引
+        private Color mPolylineSimpleRendererColor = Color.Red; //符号颜色
+        private Double mPolylineSimpleRendererSize = 0.5; //符号尺寸
+        private Int32 mPolylineUniqueFieldIndex = 0; //绑定字段索引
+        private Double mPolylineUniqueRendererSize = 0.5; //符号尺寸
+        private Int32 mPolylineClassBreaksFieldIndex = 0; //绑定字段索引
+        private Int32 mPolylineClassBreaksNum = 5; //分类数
+        private Color mPolylineClassBreaksRendererColor = Color.Red; //符号颜色
+        private Double mPolylineClassBreaksRendererMinSize = 0.5; //符号起始尺寸,线图层采用符号尺寸进行分级表示
+        private Double mPolylineClassBreaksRendererMaxSize = 1.5; //符号终止尺寸
+
+        private Int32 mPolygonRendererMode = 0; //渲染方式,0:简单渲染,1:唯一值渲染,2:分级渲染
+        private Color mPolygonSimpleRendererColor = Color.Red; //符号颜色
+        private Color mOutlineColor = Color.Red;    //描边颜色
+        private Int32 mPolygonUniqueFieldIndex = 0; //绑定字段索引
+        private Int32 mPolygonClassBreaksFieldIndex = 0; //绑定字段索引
+        private Int32 mPolygonClassBreaksNum = 5; //分类数
+        private Color mPolygonClassBreaksRendererStartColor = Color.MistyRose; //符号起始颜色,面图层采用符号颜色进行分级表示
+        private Color mPolygonClassBreaksRendererEndColor = Color.Red; //符号终止颜色
+
+        //(5)与注记显示有关的变量
+        private Color mLabelColor = Color.Black;
+        private Font mLabelFont = new Font("宋体", 12);
+        private Int32 mLabelFieldIndex = 0;
+        private bool mLabelUseMask = false;
+        private bool mLabelVisible = false;
+
+        //初始化渲染窗口和注记窗口
+        Form_PointRenderer mFormPointRenderer;
+        Form_PolylineRenderer mFormPolylineRenderer;
+        Form_PolygonRenderer mFormPolygonRenderer;
+        Form_Label mFormLabel;
+
         #endregion
 
         #region 构造函数
@@ -104,7 +154,7 @@ namespace SimpleGIS
         public frmMain()
         {
             InitializeComponent();
-            //this.MouseWheel += moMap_MouseWheel;
+            moMapControl1.MouseWheel += MoMap_MouseWheel;
         }
 
         private void frmMain_Load(object sender, EventArgs e)
@@ -125,8 +175,7 @@ namespace SimpleGIS
 
         #endregion
 
-
-        #region 读写、新建图层
+        #region 菜单栏(menuStrip)
 
         private void 新建ToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -223,39 +272,163 @@ namespace SimpleGIS
             }
         }
 
-        //将图层按点线面的方式依次排序
-        private void SortLayers()
+        private void 导出地图ToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            int sLayerCount = moMapControl1.Layers.Count;
-            MyMapObjects.moLayers sLayers = new MyMapObjects.moLayers();
-            if (sLayerCount == 1)
-                return;
-            for(int i=0;i<sLayerCount;i++)
+            if (moMapControl1.Layers.Count == 0) MessageBox.Show("请先导入图层");
+            else
             {
-                if (moMapControl1.Layers.GetItem(i).ShapeType == MyMapObjects.moGeometryTypeConstant.Point)
-                    sLayers.Add(moMapControl1.Layers.GetItem(i));
-            }
-            for (int i = 0; i < sLayerCount; i++)
-            {
-                if (moMapControl1.Layers.GetItem(i).ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPoint)
-                    sLayers.Add(moMapControl1.Layers.GetItem(i));
-            }
-            for (int i = 0; i < sLayerCount; i++)
-            {
-                if (moMapControl1.Layers.GetItem(i).ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPolyline)
-                    sLayers.Add(moMapControl1.Layers.GetItem(i));
-            }
-            for (int i = 0; i < sLayerCount; i++)
-            {
-                if (moMapControl1.Layers.GetItem(i).ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPolygon)
-                    sLayers.Add(moMapControl1.Layers.GetItem(i));
-            }
-            moMapControl1.Layers.Clear();
-            for (int i = 0; i < sLayerCount; i++) 
-            {
-                moMapControl1.Layers.Add(sLayers.GetItem(i));
+                SaveFileDialog savefile = new SaveFileDialog();
+                savefile.OverwritePrompt = true;
+                savefile.RestoreDirectory = true;
+                savefile.Title = "保存BMP图片";
+                savefile.Filter = "BMP文件(*.bmp)|*.bmp";
+                if (savefile.ShowDialog() == DialogResult.OK)
+                {
+                    string filename = savefile.FileName;
+                    moMapControl1.BmpMap.Save(filename, System.Drawing.Imaging.ImageFormat.Bmp);
+                }
             }
         }
+
+        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void 按属性选择ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form_Select newSelect = new Form_Select(this);
+            newSelect.ShowDialog();
+        }
+
+        private void 清除所选要素ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < moMapControl1.Layers.Count; i++)
+            {
+                moMapControl1.Layers.GetItem(i).SelectedFeatures.Clear();
+            }
+            moMapControl1.RedrawTrackingShapes();
+            for (int i = 0; i < All_tables.Count; i++) 
+            {
+                All_tables[i].Refresh_dataform_select();
+            }
+        }
+
+        private void 关于ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string str = "";
+            str += "李君迟 北京大学GIS设计课程\n\n";
+            str += "2025/06/05\n";
+            MessageBox.Show(str, "开发人员");
+        }
+
+        #endregion
+
+        #region 工具栏(toolStrip)
+        //添加图层
+        private void AddLayer_Click(object sender, EventArgs e)
+        {
+            添加数据ToolStripMenuItem_Click(sender, e);
+        }
+
+        //导出地图
+        private void Save_Click(object sender, EventArgs e)
+        {
+            导出地图ToolStripMenuItem_Click(sender, e);
+        }
+
+        //放大
+        private void ZoomIn_Click(object sender, EventArgs e)
+        {
+            mMapOpStyle = 1;
+            this.Cursor = new Cursor("ico/ZoomIn.ico");
+        }
+
+        //缩小
+        private void ZoomOut_Click(object sender, EventArgs e)
+        {
+            mMapOpStyle = 2;
+            this.Cursor = new Cursor("ico/ZoomOut.ico");
+        }
+
+        //漫游
+        private void Pan_Click(object sender, EventArgs e)
+        {
+            mMapOpStyle = 3;
+            this.Cursor = new Cursor("ico/PanUp.ico");
+        }
+
+        //缩放至全图
+        private void FullExtent_Click(object sender, EventArgs e)
+        {
+            moMapControl1.FullExtent();
+        }
+
+        //选择
+        private void SelectFeatures_Click(object sender, EventArgs e)
+        {
+            if (mOperatingLayerIndex == -1)
+            {
+                MessageBox.Show("请选中图层后,再进行选择要素操作!");
+                return;
+            }
+            mMapOpStyle = 4;
+            //this.Cursor = new Cursor("ico/EditSelect.ico");
+        }
+
+        //清除选择
+        private void ClearSelectedFeatures_Click(object sender, EventArgs e)
+        {
+            清除所选要素ToolStripMenuItem_Click(sender, e);
+        }
+
+        #endregion
+
+        #region 图层栏
+        //点击后切换图层是否可显
+        private void treeView1_AfterCheck(object sender, TreeViewEventArgs e)
+        {
+            moMapControl1.Layers.GetItem(e.Node.Index).Visible = !moMapControl1.Layers.GetItem(e.Node.Index).Visible;
+            moMapControl1.RedrawMap();
+        }
+
+        //右击显示功能菜单
+        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+            {
+                treeView_RigthMenu.Show(Control.MousePosition);
+            }
+        }
+
+        //单击选择图层
+        private void treeView1_MouseDown(object sender, MouseEventArgs e)
+        {
+            Point clickPoint = new Point(e.X, e.Y);
+            TreeNode currentNode = treeView1.GetNodeAt(clickPoint);
+            if (currentNode != null)
+            {
+                treeView1.SelectedNode = currentNode;
+                mLastOpLayerIndex = currentNode.Index;  //鼠标单击或右键菜单对应的图层索引
+            }
+            else
+            {
+                if (e.Button == MouseButtons.Right)
+                {
+                    mLastOpLayerIndex = -1;
+                }
+            }
+        }
+
+        //双击选择图层
+        private void treeView1_NodeMouseDoubleClick(object sender, TreeNodeMouseClickEventArgs e)
+        {
+            mLastOpLayerIndex = e.Node.Index;
+        }
+
+        #endregion 
+
+        #region 读写、新建图层
 
         //接受新建图层的参数
         public void GetCreateLayerInfo(string layerName,moGeometryTypeConstant layerType,string savePath)
@@ -287,19 +460,7 @@ namespace SimpleGIS
         }
 
 
-        private void treeView1_AfterCheck(object sender, TreeViewEventArgs e)
-        {
-            moMapControl1.Layers.GetItem(e.Node.Index).Visible = !moMapControl1.Layers.GetItem(e.Node.Index).Visible;
-            moMapControl1.RedrawMap();
-        }
-
-        private void treeView1_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
-        {
-            if(e.Button == MouseButtons.Right)
-            {
-                treeView_RigthMenu.Show(Control.MousePosition);
-            }
-        }
+        
 
         //添加新图层后触发事件
         private void ThingsAfterNewLayer(MyMapObjects.moMapLayer sMapLayer, DataIOTools.spglShpFileManager sSPGLShpFileManager,DataIOTools.dbfFileManager sDBFFileManager)
@@ -372,56 +533,6 @@ namespace SimpleGIS
             treeView1.Refresh();
         }
 
-        private void 导出地图ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (moMapControl1.Layers.Count == 0) MessageBox.Show("请先导入图层");
-            else
-            {
-                SaveFileDialog savefile = new SaveFileDialog();
-                savefile.OverwritePrompt = true;
-                savefile.RestoreDirectory = true;
-                savefile.Title = "保存BMP图片";
-                savefile.Filter = "BMP文件(*.bmp)|*.bmp";
-                if(savefile.ShowDialog() == DialogResult.OK)
-                {
-                    string filename = savefile.FileName;
-                    moMapControl1.BmpMap.Save(filename, System.Drawing.Imaging.ImageFormat.Bmp);
-                }
-            }
-        }
-
-        private void 退出ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-
-        private void AddLayer_Click(object sender, EventArgs e)
-        {
-            添加数据ToolStripMenuItem_Click(sender, e);
-        }
-
-        //
-        private void Save_Click(object sender, EventArgs e)
-        {
-            导出地图ToolStripMenuItem_Click(sender, e);
-        }
-
-        //放大
-        private void ZoomIn_Click(object sender, EventArgs e)
-        {
-            mMapOpStyle = 1;
-        }
-
-        //缩小
-        private void ZoomOut_Click(object sender, EventArgs e)
-        {
-            mMapOpStyle = 2;
-        }
-
-        private void FullExtent_Click(object sender, EventArgs e)
-        {
-            moMapControl1.FullExtent();
-        }
         #endregion
 
 
@@ -533,7 +644,7 @@ namespace SimpleGIS
                 if (mNeedToSave)
                 {
                     mNeedToSave = false;
-                    //SaveMapLayer(mOperatingLayerIndex);
+                    SaveMapLayer(mOperatingLayerIndex);
                 }
             }
             catch (Exception error)
@@ -542,6 +653,31 @@ namespace SimpleGIS
                 return;
             }
         }
+
+        private void SaveMapLayer(Int32 index)
+        {
+            //图形数据
+            MyMapObjects.moMapLayer sLayer = moMapControl1.Layers.GetItem(index);
+            mSPGLShapeFiles[index].Geometries.Clear();
+            for (Int32 j = 0; j < sLayer.Features.Count; j++)
+            {
+                mSPGLShapeFiles[index].Geometries.Add(sLayer.Features.GetItem(j).Geometry);
+            }
+            mSPGLShapeFiles[index].UpdateGeometries(mSPGLShapeFiles[index].Geometries);
+            string path = mSPGLShapeFiles[index].DefaultFilePath;
+            mSPGLShapeFiles[index].SaveToFile(path);
+            //属性数据
+            mDBFFiles[index].Fields = sLayer.AttributeFields;
+            mDBFFiles[index].AttributesList.Clear();
+            for (Int32 j = 0; j < sLayer.Features.Count; j++)
+            {
+                mDBFFiles[index].AttributesList.Add(sLayer.Features.GetItem(j).Attributes);
+            }
+            mDBFFiles[index].UpdateAttributesList(mDBFFiles[index].AttributesList);
+            path = mDBFFiles[index].DefaultPath;
+            mDBFFiles[index].SaveToFile(path);
+        }
+
         //编辑折点
         private void EditPointBtn_Click(object sender, EventArgs e)
         {
@@ -618,8 +754,8 @@ namespace SimpleGIS
             }
             if (mOperatingLayerIndex != -1 && mSPGLShapeFiles[mOperatingLayerIndex].SourceFileType == "shp")
             {
-                Int32 goOn = (Int32)MessageBox.Show("当前图层为shapefile文件，对其进行编辑操作，会在同一目录下生成同名gvshp文件，操作只会保存在该gvshp文件中！若已有同名gvshp文件，会进行覆盖，请知悉！是否继续？（这里将保存注释掉了，所以这句话目前不准确）",
-                    "Warning", MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation);
+                Int32 goOn = 1;
+                //Int32 goOn = (Int32)MessageBox.Show("当前图层为shapefile文件，对其进行编辑操作，会在同一目录下生成同名gvshp文件，操作只会保存在该gvshp文件中！若已有同名gvshp文件，会进行覆盖，请知悉！是否继续？（这里将保存注释掉了，所以这句话目前不准确）","Warning", MessageBoxButtons.OKCancel, MessageBoxIcon.Exclamation);
 
                 if (goOn == 1)
                 {
@@ -643,10 +779,16 @@ namespace SimpleGIS
                 BeginEditItem_Click(sender, e);
             }
         }
+
+        //识别
+        private void btnIdentify_Click(object sender, EventArgs e)
+        {
+            mMapOpStyle = 5;
+        }
         #endregion
 
 
-        #region 右击菜单
+        #region moMapControl右击菜单
 
         private void moMapRightMenu_ItemClicked(object sender, ToolStripItemClickedEventArgs e)
         {
@@ -708,7 +850,7 @@ namespace SimpleGIS
 
         #endregion
 
-
+        #region 鼠标操作
 
         #region MouseDown
 
@@ -718,15 +860,18 @@ namespace SimpleGIS
             {
                 if (mMapOpStyle == 1)
                 {
-                    
+                    //放大
+                    OnZoomIn_MouseDown(e);
                 }
                 else if (mMapOpStyle == 2)
                 {
+                    //缩小
                     ;
                 }
                 else if (mMapOpStyle == 3)
                 {
-                    
+                    //漫游
+                    OnPan_MouseDown(e);
                 }
                 else if (mMapOpStyle == 4)
                 {
@@ -734,7 +879,7 @@ namespace SimpleGIS
                 }
                 else if (mMapOpStyle == 5)
                 {
-                    
+                    OnIdentify_MouseDown(e);
                 }
                 else if (mMapOpStyle == 6 && mOperatingLayerIndex != -1)
                 {
@@ -752,6 +897,25 @@ namespace SimpleGIS
             }
         }
 
+        private void OnZoomIn_MouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                mStartMouseLocation = e.Location;
+                mIsInZoom = true;
+                this.Cursor = new Cursor("ico/ZoomIn.ico");
+            }
+        }
+
+        private void OnPan_MouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                mStartMouseLocation = e.Location;
+                mIsInPan = true;
+                this.Cursor = new Cursor("ico/PanUp.ico");
+            }
+        }
 
         private void OnEdit_MouseDown(MouseEventArgs e)
         {
@@ -822,6 +986,15 @@ namespace SimpleGIS
             {
                 mIsInSelect = true;
                 OnSelect_MouseDown(e);
+            }
+        }
+
+        private void OnIdentify_MouseDown(MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                mStartMouseLocation = e.Location;
+                mIsInIdentify = true;
             }
         }
 
@@ -910,7 +1083,7 @@ namespace SimpleGIS
             ShowCoordinates(e.Location);
             if (mMapOpStyle == 1)
             {
-                
+                OnZoomIn_MouseMove(e);
             }
             else if (mMapOpStyle == 2)
             {
@@ -918,7 +1091,7 @@ namespace SimpleGIS
             }
             else if (mMapOpStyle == 3)
             {
-                
+                OnPan_MouseMove(e);
             }
             else if (mMapOpStyle == 4 && mOperatingLayerIndex != -1)
             {
@@ -926,7 +1099,7 @@ namespace SimpleGIS
             }
             else if (mMapOpStyle == 5)
             {
-                
+                OnIdentify_MouseMove(e);
             }
             else if (mMapOpStyle == 6)
             {
@@ -942,6 +1115,28 @@ namespace SimpleGIS
             }
             
         }
+
+        private void OnZoomIn_MouseMove(MouseEventArgs e)
+        {
+            if (mIsInZoom == false)
+            {
+                return;
+            }
+            moMapControl1.Refresh();
+            MyMapObjects.moRectangle sRect = GetMapRectByTwoPoints(mStartMouseLocation, e.Location);
+            MyMapObjects.moUserDrawingTool sDrawingTool = moMapControl1.GetDrawingTool();
+            sDrawingTool.DrawRectangle(sRect, mZoomBoxSymbol);
+            this.Cursor = new Cursor("ico/ZoomIn.ico");
+        }
+
+        private void OnPan_MouseMove(MouseEventArgs e)
+        {
+            if (mIsInPan == false)
+                return;
+            moMapControl1.PanMapImageTo(e.Location.X - mStartMouseLocation.X, e.Location.Y - mStartMouseLocation.Y);
+            this.Cursor = new Cursor("ico/PanDown.ico");
+        }
+
         private void OnSelect_MouseMove(MouseEventArgs e)
         {
             if (mIsInSelect == false)
@@ -953,6 +1148,20 @@ namespace SimpleGIS
             MyMapObjects.moUserDrawingTool sDrawingTool = moMapControl1.GetDrawingTool();
             sDrawingTool.DrawRectangle(sRect, mSelectingBoxSymbol);
         }
+
+        private void OnIdentify_MouseMove(MouseEventArgs e)
+        {
+            if (mIsInIdentify == false)
+            {
+                return;
+            }
+            moMapControl1.Refresh();
+            MyMapObjects.moRectangle sRect = GetMapRectByTwoPoints(mStartMouseLocation, e.Location);
+            MyMapObjects.moUserDrawingTool sDrawingTool = moMapControl1.GetDrawingTool();
+            sDrawingTool.DrawRectangle(sRect, mSelectingBoxSymbol);
+        }
+
+
         private void OnEdit_MouseMove(MouseEventArgs e)
         {
             if (mIsInMove)
@@ -1208,15 +1417,17 @@ namespace SimpleGIS
             {
                 if (mMapOpStyle == 1)
                 {
-                    
+                    //放大
+                    OnZoomIn_MouseUp(e);
                 }
                 else if (mMapOpStyle == 2)
                 {
-                    ;
+                    //缩小
                 }
                 else if (mMapOpStyle == 3)
                 {
-                   
+                    //漫游
+                    OnPan_MouseUp(e);
                 }
                 else if (mMapOpStyle == 4 && mOperatingLayerIndex != -1)
                 {
@@ -1224,7 +1435,7 @@ namespace SimpleGIS
                 }
                 else if (mMapOpStyle == 5)
                 {
-                    
+                    OnIdentify_MouseUp(e);
                 }
                 else if (mMapOpStyle == 6 && mOperatingLayerIndex != -1)
                 {
@@ -1242,6 +1453,38 @@ namespace SimpleGIS
             }
         }
 
+        private void OnZoomIn_MouseUp(MouseEventArgs e)
+        {
+            if (mIsInZoom == false)
+            {
+                return;
+            }
+            mIsInZoom = false;
+            if (mStartMouseLocation.X == e.Location.X && mStartMouseLocation.Y == e.Location.Y)
+            {
+                MyMapObjects.moPoint sPoint = moMapControl1.ToMapPoint(mStartMouseLocation.X, mStartMouseLocation.Y);
+                moMapControl1.ZoomByCenter(sPoint, mZoomRatioFixed);
+            }
+            else
+            {
+                MyMapObjects.moRectangle sBox = GetMapRectByTwoPoints(mStartMouseLocation, e.Location);
+                moMapControl1.ZoomToExtent(sBox);
+            }
+            this.Cursor = System.Windows.Forms.Cursors.Default;
+
+        }
+
+        private void OnPan_MouseUp(MouseEventArgs e)
+        {
+            if (mIsInPan == false)
+                return;
+            mIsInPan = false;
+            double sDeltaX = moMapControl1.ToMapDistance(e.Location.X - mStartMouseLocation.X);
+            double sDeltaY = moMapControl1.ToMapDistance(mStartMouseLocation.Y - e.Location.Y);
+            moMapControl1.PanDelta(sDeltaX, sDeltaY);
+            this.Cursor = System.Windows.Forms.Cursors.Default;
+        }
+
         private void OnSelect_MouseUp(MouseEventArgs e)
         {
             if (mIsInSelect == false)
@@ -1252,6 +1495,10 @@ namespace SimpleGIS
             MyMapObjects.moRectangle sBox = GetMapRectByTwoPoints(mStartMouseLocation, e.Location);
             double sTolerance = moMapControl1.ToMapDistance(mSelectingTolerance);
             moMapControl1.SelectLayerByBox(sBox, sTolerance, mOperatingLayerIndex); //该方法只在当前图层中选择，与demo中不同
+            if(All_tables.Count != 0)
+            {
+                All_tables[mOperatingLayerIndex].Refresh_dataform_select();
+            }
             moMapControl1.RedrawTrackingShapes();
          
           //  RedrawAttribute();
@@ -1269,6 +1516,50 @@ namespace SimpleGIS
                 OnSelect_MouseUp(e);
             }
         }
+
+        private void OnIdentify_MouseUp(MouseEventArgs e)
+        {
+            if (mIsInIdentify == false)
+            {
+                return;
+            }
+            mIsInIdentify = false;
+            moMapControl1.Refresh();
+            MyMapObjects.moRectangle sBox = GetMapRectByTwoPoints(mStartMouseLocation, e.Location);
+            double sTolerance = moMapControl1.ToMapDistance(mSelectingTolerance);
+            moMapControl1.SelectLayerByBox(sBox, sTolerance, mOperatingLayerIndex); //该方法只在当前图层中选择，与demo中不同
+            if (All_tables.Count != 0)
+            {
+                All_tables[mOperatingLayerIndex].Refresh_dataform_select();
+            }
+            moMapControl1.RedrawTrackingShapes();
+            if (moMapControl1.Layers.Count == 0)
+            {
+                return;
+            }
+            else
+            {
+                MyMapObjects.moMapLayer sLayer = moMapControl1.Layers.GetItem(mOperatingLayerIndex);
+                MyMapObjects.moFeatures sFeatures = sLayer.SearchByBox(sBox, sTolerance);
+                Int32 sSelFeatureCount = sFeatures.Count;
+                if (sSelFeatureCount > 0)
+                {
+                    MyMapObjects.moGeometry[] sGeometries = new MyMapObjects.moGeometry[sSelFeatureCount];
+                    for (Int32 i = 0; i < sSelFeatureCount; i++)
+                    {
+                        sGeometries[i] = sFeatures.GetItem(i).Geometry;
+                    }
+                    moMapControl1.FlashShapes(sGeometries, 5, 800);
+
+                }
+            }
+            Form_table datafram_windows = new Form_table(this, mLastOpLayerIndex);
+            //需要在弹出的属性表中仅显示选中要素
+            datafram_windows.Owner = this;
+            datafram_windows.Name = moMapControl1.Layers.GetItem(mLastOpLayerIndex).Name;
+            datafram_windows.Show();
+        }
+
         private void OnMoveSelect_MouseUp(MouseEventArgs e)
         {
             if (mIsInMove == false) return;
@@ -1468,7 +1759,7 @@ namespace SimpleGIS
                 }
                 else if (mMapOpStyle == 2)
                 {
-                    
+                    OnZoomOut_MouseClick(e);
                 }
                 else if (mMapOpStyle == 3)
                 {
@@ -1488,6 +1779,17 @@ namespace SimpleGIS
                 }
             }
         }
+
+        private void OnZoomOut_MouseClick(MouseEventArgs e)
+        {
+            this.Cursor = new Cursor("ico/ZoomOut.ico");
+
+            //单点缩小
+            MyMapObjects.moPoint sPoint = moMapControl1.ToMapPoint(e.Location.X, e.Location.Y);
+            moMapControl1.ZoomByCenter(sPoint, 1 / mZoomRatioFixed);
+            this.Cursor = System.Windows.Forms.Cursors.Default;
+        }
+
 
         private void OnSketch_MouseClick(MouseEventArgs e)
         {
@@ -1540,9 +1842,87 @@ namespace SimpleGIS
 
         #endregion
 
+        #region MouseWheel
+        //鼠标滑轮
+        private void MoMap_MouseWheel(object sender, MouseEventArgs e)
+        {
+            //计算地图控件中心点的地图坐标
+            double sX = moMapControl1.ClientRectangle.Width / 2;
+            double sY = moMapControl1.ClientRectangle.Height / 2;
+            MyMapObjects.moPoint sPoint = moMapControl1.ToMapPoint(sX, sY);
+            if (e.Delta > 0)
+            {
+                moMapControl1.ZoomByCenter(sPoint, mZoomRatioMouseWheel);
+            }
+            else
+            {
+                moMapControl1.ZoomByCenter(sPoint, 1 / mZoomRatioMouseWheel);
+            }
+        }
+        #endregion
+        #endregion
 
+        #region 图层渲染与注记
+        public void GetPointRenderer(Int32 renderMode, Int32 symbolStyle, Color simpleRendererColor, Double simpleRendererSize,
+            Int32 uniqueFieldIndex, Double uniqueRendererSize, Int32 classBreakFieldIndex, Int32 classNum,
+            Color classBreakRendererColor, double classBreakRendererMinSize, double classBreakRendererMaxSize)
+        {
+            mPointRendererMode = renderMode;
+            mPointSymbolStyle = symbolStyle;
+            mPointSimpleRendererColor = simpleRendererColor;
+            mPointSimpleRendererSize = simpleRendererSize;
+            mPointUniqueFieldIndex = uniqueFieldIndex;
+            mPointUniqueRendererSize = uniqueRendererSize;
+            mPointClassBreaksFieldIndex = classBreakFieldIndex;
+            mPointClassBreaksNum = classNum;
+            mPointClassBreaksRendererColor = classBreakRendererColor;
+            mPointClassBreaksRendererMinSize = classBreakRendererMinSize;
+            mPointClassBreaksRendererMaxSize = classBreakRendererMaxSize;
+            mIsInRenderer = true;
+        }
 
+        public void GetPolylineRenderer(Int32 renderMode, Int32 symbolStyle, Color simpleRendererColor, Double simpleRendererSize,
+           Int32 uniqueFieldIndex, Double uniqueRendererSize, Int32 classBreakFieldIndex, Int32 classNum,
+           Color classBreakRendererColor, double classBreakRendererMinSize, double classBreakRendererMaxSize)
+        {
+            mPolylineRendererMode = renderMode;
+            mPolylineSymbolStyle = symbolStyle;
+            mPolylineSimpleRendererColor = simpleRendererColor;
+            mPolylineSimpleRendererSize = simpleRendererSize;
+            mPolylineUniqueFieldIndex = uniqueFieldIndex;
+            mPolylineUniqueRendererSize = uniqueRendererSize;
+            mPolylineClassBreaksFieldIndex = classBreakFieldIndex;
+            mPolylineClassBreaksNum = classNum;
+            mPolylineClassBreaksRendererColor = classBreakRendererColor;
+            mPolylineClassBreaksRendererMinSize = classBreakRendererMinSize;
+            mPolylineClassBreaksRendererMaxSize = classBreakRendererMaxSize;
+            mIsInRenderer = true;
+        }
 
+        public void GetPolygonRenderer(Int32 renderMode,Color OutlineRendererColor, Color simpleRendererColor,
+            Int32 uniqueFieldIndex, Int32 classBreakFieldIndex, Int32 classNum,
+            Color classBreakRendererStartColor, Color classBreakRendererEndColor)
+        {
+            mPolygonRendererMode = renderMode;
+            mPolygonSimpleRendererColor = simpleRendererColor;
+            mOutlineColor = OutlineRendererColor;
+            mPolygonUniqueFieldIndex = uniqueFieldIndex;
+            mPolygonClassBreaksFieldIndex = classBreakFieldIndex;
+            mPolygonClassBreaksNum = classNum;
+            mPolygonClassBreaksRendererStartColor = classBreakRendererStartColor;
+            mPolygonClassBreaksRendererEndColor = classBreakRendererEndColor;
+            mIsInRenderer = true;
+        }
+
+        public void GetLabel(bool visible, bool useMask, Int32 fieldIndex, Color color, Font font)
+        {
+            mLabelVisible = visible;
+            mLabelUseMask = useMask;
+            mLabelFieldIndex = fieldIndex;
+            mLabelColor = color;
+            mLabelFont = font;
+        }
+        #endregion 
 
 
 
@@ -1583,6 +1963,7 @@ namespace SimpleGIS
             mSketchingShape.Add(sPoints);
         }
 
+        //根据屏幕坐标显示地图坐标
         private void ShowCoordinates(PointF point)
         {
             MyMapObjects.moPoint sPoint = moMapControl1.ToMapPoint(point.X, point.Y);
@@ -2583,10 +2964,449 @@ namespace SimpleGIS
         }
 
 
+
+
+
+
+
         #endregion
 
+        #region treeView右击菜单
 
+        private void 移除ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mEditMoMap == true && mOperatingLayerIndex == mLastOpLayerIndex)
+            {
+                return;
+            }
+            else
+            {
+                moMapControl1.Layers.RemoveAt(mLastOpLayerIndex);
+                mSPGLShapeFiles.RemoveAt(mLastOpLayerIndex);
+                mDBFFiles.RemoveAt(mLastOpLayerIndex);
+                mLastOpLayerIndex = -1;
+                RefreshLayersTree();
+                moMapControl1.RedrawMap();
+            }
+        }
 
+        private void 上移至顶层ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mLastOpLayerIndex == 0)
+                return;
+
+            MyMapObjects.moMapLayer tempLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);
+            moMapControl1.Layers.MoveTo(mLastOpLayerIndex, 0);
+
+            DataIOTools.spglShpFileManager spglshp1 = mSPGLShapeFiles[mLastOpLayerIndex];
+            mSPGLShapeFiles.RemoveAt(mLastOpLayerIndex);
+            mSPGLShapeFiles.Insert(0, spglshp1);
+
+            DataIOTools.dbfFileManager spgdbf1 = mDBFFiles[mLastOpLayerIndex];
+            mDBFFiles.RemoveAt(mLastOpLayerIndex);
+            mDBFFiles.Insert(0, spgdbf1);
+
+            RefreshLayersTree();
+            moMapControl1.RedrawMap();
+        }
+
+        private void 上移一层ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mLastOpLayerIndex == 0)
+                return;
+
+            MyMapObjects.moMapLayer tempLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);
+            moMapControl1.Layers.MoveTo(mLastOpLayerIndex, mLastOpLayerIndex - 1);
+
+            DataIOTools.spglShpFileManager spglshp1 = mSPGLShapeFiles[mLastOpLayerIndex];
+            mSPGLShapeFiles.RemoveAt(mLastOpLayerIndex);
+            mSPGLShapeFiles.Insert(mLastOpLayerIndex - 1, spglshp1);
+
+            DataIOTools.dbfFileManager spgdbf1 = mDBFFiles[mLastOpLayerIndex];
+            mDBFFiles.RemoveAt(mLastOpLayerIndex);
+            mDBFFiles.Insert(mLastOpLayerIndex - 1, spgdbf1);
+
+            RefreshLayersTree();
+            moMapControl1.RedrawMap();
+        }
+
+        private void 下一一层ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mLastOpLayerIndex == treeView1.Nodes.Count - 1)
+                return;
+
+            MyMapObjects.moMapLayer tempLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);
+            moMapControl1.Layers.MoveTo(mLastOpLayerIndex, mLastOpLayerIndex + 1);
+
+            DataIOTools.spglShpFileManager spglshp1 = mSPGLShapeFiles[mLastOpLayerIndex];
+            mSPGLShapeFiles.RemoveAt(mLastOpLayerIndex);
+            mSPGLShapeFiles.Insert(mLastOpLayerIndex + 1, spglshp1);
+
+            DataIOTools.dbfFileManager spgdbf1 = mDBFFiles[mLastOpLayerIndex];
+            mDBFFiles.RemoveAt(mLastOpLayerIndex);
+            mDBFFiles.Insert(mLastOpLayerIndex + 1, spgdbf1);
+
+            RefreshLayersTree();
+            moMapControl1.RedrawMap();
+        }
+
+        private void 下移至底层ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (mLastOpLayerIndex == treeView1.Nodes.Count - 1)
+                return;
+
+            MyMapObjects.moMapLayer tempLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);
+            moMapControl1.Layers.MoveTo(mLastOpLayerIndex, treeView1.Nodes.Count - 1);
+
+            DataIOTools.spglShpFileManager spglshp1 = mSPGLShapeFiles[mLastOpLayerIndex];
+            mSPGLShapeFiles.RemoveAt(mLastOpLayerIndex);
+            mSPGLShapeFiles.Insert(treeView1.Nodes.Count - 1, spglshp1);
+
+            DataIOTools.dbfFileManager spgdbf1 = mDBFFiles[mLastOpLayerIndex];
+            mDBFFiles.RemoveAt(mLastOpLayerIndex);
+            mDBFFiles.Insert(treeView1.Nodes.Count - 1, spgdbf1);
+
+            RefreshLayersTree();
+            moMapControl1.RedrawMap();
+        }
+
+        private void 缩放至图层ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MyMapObjects.moMapLayer tempLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);
+            MyMapObjects.moRectangle sExtent = tempLayer.Extent;
+            moMapControl1.ZoomToExtent(sExtent);
+        }
+
+        private void 打开属性表ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Form_table form_Table = new Form_table(this, mLastOpLayerIndex);
+            form_Table.Owner = this;
+            form_Table.Name = moMapControl1.Layers.GetItem(mLastOpLayerIndex).Name;
+            form_Table.Show();
+            form_Table.SetDesktopLocation(this.Location.X + (this.Width - form_Table.Width) / 2, this.Location.Y + (this.Height - form_Table.Height) / 2);
+            form_Table.Refresh_dataform_select();
+            All_tables.Add(form_Table);
+            form_Table.Windows_index = Fid_table_windows;
+            Fid_table_windows++;
+        }
+
+        private void 另存为SPGLToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            
+            string filepath, sPath;
+            SaveFileDialog saveFileDialog = new SaveFileDialog();
+            saveFileDialog.Filter = @"自定义图层(*.spgl)|*.spgl";
+            saveFileDialog.FilterIndex = 1;
+            saveFileDialog.RestoreDirectory = true;
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                filepath = saveFileDialog.FileName;
+                mSPGLShapeFiles[mLastOpLayerIndex].SaveToFile(filepath);
+                sPath = filepath.Substring(0, filepath.IndexOf(".spgl")) + ".spgdbf";
+                mDBFFiles[mLastOpLayerIndex].SaveToFile(sPath);
+            }
+        }
+
+        private void 图层渲染ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            mIsInRenderer = false;
+            MyMapObjects.moMapLayer sLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);   //待渲染的图层
+            if (sLayer.ShapeType == MyMapObjects.moGeometryTypeConstant.Point || sLayer.ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPoint)
+            {
+                mFormPointRenderer = new Form_PointRenderer(moMapControl1.Layers.GetItem(mLastOpLayerIndex));
+                mFormPointRenderer.Owner = this;
+                mFormPointRenderer.ShowDialog();
+                if (mIsInRenderer == false)
+                    return;
+                //简单渲染
+                if (mPointRendererMode == 0)
+                {
+                    MyMapObjects.moSimpleRenderer sRenderer = new MyMapObjects.moSimpleRenderer();
+                    MyMapObjects.moSimpleMarkerSymbol sSymbol = new MyMapObjects.moSimpleMarkerSymbol();
+                    sSymbol.Style = (MyMapObjects.moSimpleMarkerSymbolStyleConstant)mPointSymbolStyle;
+                    sSymbol.Color = mPointSimpleRendererColor;
+                    sSymbol.Size = mPointSimpleRendererSize;
+                    sRenderer.Symbol = sSymbol;
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //唯一值渲染
+                else if (mPointRendererMode == 1)
+                {
+                    MyMapObjects.moUniqueValueRenderer sRenderer = new MyMapObjects.moUniqueValueRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPointUniqueFieldIndex).Name;
+                    List<string> sValues = new List<string>();
+                    Int32 sFeaturesCount = sLayer.Features.Count;
+                    for (Int32 i = 0; i < sFeaturesCount; i++)
+                    {
+                        string sValue = Convert.ToString(sLayer.Features.GetItem(i).Attributes.GetItem(mPointUniqueFieldIndex));
+                        sValues.Add(sValue);
+                    }
+                    //去除重复
+                    sValues = sValues.Distinct().ToList();
+                    //生成符号
+                    Int32 sValueCount = sValues.Count;
+                    for (Int32 i = 0; i < sValueCount; i++)
+                    {
+                        MyMapObjects.moSimpleMarkerSymbol sSymbol = new MyMapObjects.moSimpleMarkerSymbol();
+                        sSymbol.Style = (MyMapObjects.moSimpleMarkerSymbolStyleConstant)mPointSymbolStyle;
+                        sSymbol.Size = mPointSimpleRendererSize;
+                        sRenderer.AddUniqueValue(sValues[i], sSymbol);
+                    }
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleMarkerSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //分级渲染
+                else if (mPointRendererMode == 2)
+                {
+                    MyMapObjects.moClassBreaksRenderer sRenderer = new MyMapObjects.moClassBreaksRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPointClassBreaksFieldIndex).Name;
+                    List<double> sValues = new List<double>();
+                    Int32 sFeatrueCount = sLayer.Features.Count;
+                    Int32 sFieldIndex = sLayer.AttributeFields.FindField(sRenderer.Field);
+                    MyMapObjects.moValueTypeConstant sValueType = sLayer.AttributeFields.GetItem(sFieldIndex).ValueType;
+                    if (sValueType == MyMapObjects.moValueTypeConstant.dText)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+                    try
+                    {
+                        for (Int32 i = 0; i < sFeatrueCount; i++)
+                        {
+                            double sValue = Convert.ToDouble(sLayer.Features.GetItem(i).Attributes.GetItem(sFieldIndex));
+                            sValues.Add(sValue);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+                    double sMinValue = sValues.Min();
+                    double sMaxValue = sValues.Max();
+                    for (Int32 i = 0; i < mPointClassBreaksNum; i++)
+                    {
+                        double sValue = sMinValue + (sMaxValue - sMinValue) * (i + 1) / mPointClassBreaksNum;
+                        MyMapObjects.moSimpleMarkerSymbol sSymbol = new MyMapObjects.moSimpleMarkerSymbol();
+                        sSymbol.Color = mPointClassBreaksRendererColor;
+                        sSymbol.Style = (MyMapObjects.moSimpleMarkerSymbolStyleConstant)mPointSymbolStyle;
+                        sRenderer.AddBreakValue(sValue, sSymbol);
+                    }
+                    double sMinSize = mPointClassBreaksRendererMinSize;
+                    double sMaxSize = mPointClassBreaksRendererMaxSize;
+                    sRenderer.RampSize(sMinSize, sMaxSize);
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleMarkerSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+            }
+            else if (sLayer.ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPolyline)
+            {
+                mFormPolylineRenderer = new Form_PolylineRenderer(moMapControl1.Layers.GetItem(mLastOpLayerIndex));
+                mFormPolylineRenderer.Owner = this;
+                mFormPolylineRenderer.ShowDialog();
+                if (mIsInRenderer == false)
+                    return;
+                //简单渲染
+                if (mPolylineRendererMode == 0)
+                {
+                    MyMapObjects.moSimpleRenderer sRenderer = new MyMapObjects.moSimpleRenderer();
+                    MyMapObjects.moSimpleLineSymbol sSymbol = new MyMapObjects.moSimpleLineSymbol();
+                    sSymbol.Style = (MyMapObjects.moSimpleLineSymbolStyleConstant)mPolylineSymbolStyle;//传参修改
+                    sSymbol.Color = mPolylineSimpleRendererColor;//修改颜色
+                    sSymbol.Size = mPolylineSimpleRendererSize;//修改尺寸
+                    sRenderer.Symbol = sSymbol;
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //唯一值渲染
+                else if (mPolylineRendererMode == 1)
+                {
+                    MyMapObjects.moUniqueValueRenderer sRenderer = new MyMapObjects.moUniqueValueRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPolylineUniqueFieldIndex).Name;
+                    List<string> sValues = new List<string>();
+                    Int32 sFeatrueCount = sLayer.Features.Count;
+                    for (Int32 i = 0; i < sFeatrueCount; i++)
+                    {
+                        string sValue = Convert.ToString(sLayer.Features.GetItem(i).Attributes.GetItem(mPolylineUniqueFieldIndex));
+                        sValues.Add(sValue);
+                    }
+                    //去除重复
+                    sValues = sValues.Distinct().ToList();
+                    //生成符号
+                    Int32 sValueCount = sValues.Count;
+                    for (Int32 i = 0; i < sValueCount; i++)
+                    {
+                        MyMapObjects.moSimpleLineSymbol sSymbol = new MyMapObjects.moSimpleLineSymbol();
+                        sSymbol.Style = (MyMapObjects.moSimpleLineSymbolStyleConstant)mPolylineSymbolStyle;//修改样式
+                        sSymbol.Size = mPolylineUniqueRendererSize;//修改尺寸
+                        sRenderer.AddUniqueValue(sValues[i], sSymbol);
+                    }
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleLineSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //分级渲染
+                else if (mPolylineRendererMode == 2)
+                {
+                    MyMapObjects.moClassBreaksRenderer sRenderer = new MyMapObjects.moClassBreaksRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPolylineClassBreaksFieldIndex).Name;
+                    List<double> sValues = new List<double>();
+                    Int32 sFeatrueCount = sLayer.Features.Count;
+                    Int32 sFieldIndex = sLayer.AttributeFields.FindField(sRenderer.Field);
+                    MyMapObjects.moValueTypeConstant sValueType = sLayer.AttributeFields.GetItem(sFieldIndex).ValueType;
+                    if (sValueType == MyMapObjects.moValueTypeConstant.dText)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+                    try
+                    {
+                        for (Int32 i = 0; i < sFeatrueCount; i++)
+                        {
+                            double sValue = Convert.ToDouble(sLayer.Features.GetItem(i).Attributes.GetItem(sFieldIndex));
+                            sValues.Add(sValue);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+
+                    double sMinValue = sValues.Min();
+                    double sMaxValue = sValues.Max();
+                    for (Int32 i = 0; i < mPolylineClassBreaksNum; i++)
+                    {
+                        double sValue = sMinValue + (sMaxValue - sMinValue) * (i + 1) / mPolylineClassBreaksNum;
+                        MyMapObjects.moSimpleLineSymbol sSymbol = new MyMapObjects.moSimpleLineSymbol();
+                        sSymbol.Color = mPolylineClassBreaksRendererColor;
+                        sSymbol.Style = (MyMapObjects.moSimpleLineSymbolStyleConstant)mPolylineSymbolStyle;
+                        sRenderer.AddBreakValue(sValue, sSymbol);
+                    }
+                    double sMinSize = mPolylineClassBreaksRendererMinSize;
+                    double sMaxSize = mPolylineClassBreaksRendererMaxSize;
+                    sRenderer.RampSize(sMinSize, sMaxSize);
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleLineSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+            }
+            else if (sLayer.ShapeType == MyMapObjects.moGeometryTypeConstant.MultiPolygon)
+            {
+                mFormPolygonRenderer = new Form_PolygonRenderer(moMapControl1.Layers.GetItem(mLastOpLayerIndex));
+                mFormPolygonRenderer.Owner = this;
+                mFormPolygonRenderer.ShowDialog();
+                if (mIsInRenderer == false)
+                {
+                    return;
+                }
+                //简单渲染
+                if (mPolygonRendererMode == 0)
+                {
+                    MyMapObjects.moSimpleRenderer sRenderer = new MyMapObjects.moSimpleRenderer();
+                    MyMapObjects.moSimpleFillSymbol sSymbol = new MyMapObjects.moSimpleFillSymbol();
+                    sSymbol.Color = mPolygonSimpleRendererColor;
+                    sSymbol.OutlineColor = mOutlineColor;
+                    sSymbol.InitializeOutline();
+                    sRenderer.Symbol = sSymbol;
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //唯一值渲染
+                else if (mPolygonRendererMode == 1)
+                {
+                    MyMapObjects.moUniqueValueRenderer sRenderer = new MyMapObjects.moUniqueValueRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPolygonUniqueFieldIndex).Name;
+                    List<string> sValues = new List<string>();
+                    Int32 sFeatrueCount = sLayer.Features.Count;
+                    for (Int32 i = 0; i < sFeatrueCount; i++)
+                    {
+                        string sValue = Convert.ToString(sLayer.Features.GetItem(i).Attributes.GetItem(mPolygonUniqueFieldIndex));
+                        sValues.Add(sValue);
+                    }
+                    //去除重复
+                    sValues = sValues.Distinct().ToList();
+                    //生成符号
+                    Int32 sValueCount = sValues.Count;
+                    for (Int32 i = 0; i <= sValueCount - 1; i++)
+                    {
+                        MyMapObjects.moSimpleFillSymbol sSymbol = new MyMapObjects.moSimpleFillSymbol();
+                        sSymbol.OutlineColor = mOutlineColor;
+                        sSymbol.InitializeOutline();
+                        sRenderer.AddUniqueValue(sValues[i], sSymbol);
+                    }
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleFillSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+                //分级渲染
+                else if (mPolygonRendererMode == 2)
+                {
+                    MyMapObjects.moClassBreaksRenderer sRenderer = new MyMapObjects.moClassBreaksRenderer();
+                    sRenderer.Field = sLayer.AttributeFields.GetItem(mPolygonClassBreaksFieldIndex).Name;
+                    List<double> sValues = new List<double>();
+                    Int32 sFeatrueCount = sLayer.Features.Count;
+                    Int32 sFieldIndex = sLayer.AttributeFields.FindField(sRenderer.Field);
+                    MyMapObjects.moValueTypeConstant sValueType = sLayer.AttributeFields.GetItem(sFieldIndex).ValueType;
+                    if (sValueType == MyMapObjects.moValueTypeConstant.dText)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+                    try
+                    {
+                        for (Int32 i = 0; i < sFeatrueCount; i++)
+                        {
+                            double sValue = Convert.ToDouble(sLayer.Features.GetItem(i).Attributes.GetItem(sFieldIndex));
+                            sValues.Add(sValue);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        MessageBox.Show("该字段不是数值字段，不支持分级渲染！");
+                        return;
+                    }
+                    //获取最小最大值并分5级
+                    double sMinValue = sValues.Min();
+                    double sMaxValue = sValues.Max();
+                    for (Int32 i = 0; i < mPolygonClassBreaksNum; i++)
+                    {
+                        double sValue = sMinValue + (sMaxValue - sMinValue) * (i + 1) / mPolygonClassBreaksNum;
+                        MyMapObjects.moSimpleFillSymbol sSymbol = new MyMapObjects.moSimpleFillSymbol();
+                        sSymbol.OutlineColor = mOutlineColor;
+                        sSymbol.InitializeOutline();
+                        sRenderer.AddBreakValue(sValue, sSymbol);
+                    }
+                    Color sStartColor = mPolygonClassBreaksRendererStartColor;
+                    Color sEndColor = mPolygonClassBreaksRendererEndColor;
+                    sRenderer.RampColor(sStartColor, sEndColor);
+                    sRenderer.DefaultSymbol = new MyMapObjects.moSimpleFillSymbol();
+                    sLayer.Renderer = sRenderer;
+                    moMapControl1.RedrawMap();
+                }
+            }
+        }
+
+        private void 显示注记ToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            MyMapObjects.moMapLayer sLayer = moMapControl1.Layers.GetItem(mLastOpLayerIndex);//待显示注记的图层
+            mFormLabel = new Form_Label(sLayer);
+            mFormLabel.Owner = this;
+            mFormLabel.ShowDialog();
+            MyMapObjects.moLabelRenderer sLabelRenderer = new MyMapObjects.moLabelRenderer();
+            sLabelRenderer.Field = sLayer.AttributeFields.GetItem(mLabelFieldIndex).Name;
+            sLabelRenderer.TextSymbol.Font = mLabelFont;
+            sLabelRenderer.TextSymbol.FontColor = mLabelColor;
+            sLabelRenderer.TextSymbol.UseMask = mLabelUseMask;
+            sLabelRenderer.LabelFeatures = mLabelVisible;
+            sLayer.LabelRenderer = sLabelRenderer;
+            moMapControl1.RedrawMap();
+        }
+
+        #endregion
 
     }
 }

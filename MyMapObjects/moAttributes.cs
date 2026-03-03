@@ -22,7 +22,10 @@ namespace MyMapObjects
         {
             _Attributes = new List<object>();
         }
-
+        public Int32 Count
+        {
+            get { return _Attributes.Count; }
+        }
         #endregion
 
 
